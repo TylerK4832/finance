@@ -1,0 +1,30 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Quote
+{% endblock %}
+
+{% block main %}
+  <div class="row">
+    <div class="col">
+      <p>
+        <div class="stocklabel">
+          {{stockinfo["symbol"]}}
+          (
+          {{stockinfo["name"]}}
+          )
+        </div>
+      </p>
+    </div>
+    <div class="col stocklabel">
+      <p>
+        <div>
+        Price of 1 share:
+        <div class="price">
+          {{stockinfo["price"]}}
+        </div>
+      </p>
+    </div>
+  </div>
+
+{% endblock %}
