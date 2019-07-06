@@ -40,6 +40,43 @@ db = SQL("sqlite:///finance.db")
 if not os.environ.get("API_KEY"):
     raise RuntimeError("API_KEY not set")
 
+@app.route("/leaderboard")
+def leaderboard():
+    userlist=[]
+    sorteduserlist=[]
+    for i in range(len(db.execute("SELECT * FROM users"))):
+        userlist.append(db.execute("SELECT * FROM users")[i]['username'])
+    length = len(userlist)
+    
+    for i in range(length):
+        j = i+1
+        if j > length:
+            break
+        user1=userlist[i]
+        user2=userlist[j]
+        user1_stock_prices_total=[]
+        user2_stock_prices_total=[]
+        user1_id=int(db.execute("SELECT id FROM users WHERE username=:username", username=user1)[0]['id'])
+        user2_id=int(db.execute("SELECT id FROM users WHERE username=:username", username=user2)[0]['id'])
+        print(db.execute("SELECT cash FROM users WHERE username = :username", username=user1))
+        user1_cash=db.execute("SELECT cash FROM users WHERE username = :username", username=user1)[0]['cash']
+        user2_cash=db.execute("SELECT cash FROM users WHERE username = :username", username=user2)[0]['cash']
+        user1_stocks=db.execute("SELECT * FROM stocks WHERE user_id= :user_id", user_id=user1_id)
+        user2_stocks=db.execute("SELECT * FROM stocks WHERE user_id= :user_id", user_id=user2_id)
+        for x in range(len(user1_stocks)):
+            user1_stock_prices_total.append(lookup(user1_stocks[x]['symbol'])['price']*user1_stocks[x]['shares'])
+        for y in range(len(user2_stocks)):
+            user2_stock_prices_total.append(lookup(user2_stocks[y]['symbol'])['price']*user2_stocks[y]['shares'])
+        user1_value = sum(user1_stock_prices_total)+user1_cash
+        user2_value = sum(user2_stock_prices_total)+user2_cash
+            
+        if user2_value > user1_value:
+            userlist[i] = user2
+            userlist[j] = user1
+
+    print(userlist)
+    
+    return render_template("leaderboard.html", length=length)
 
 @app.route("/")
 @login_required
@@ -164,6 +201,7 @@ def register():
 def sell():
     user_stocks=db.execute("SELECT * FROM stocks WHERE user_id= :user_id", user_id=session["user_id"])
     length= len(user_stocks)
+    user_cash=db.execute("SELECT cash FROM users WHERE id = :user_id", user_id=session["user_id"])[0]['cash']
     if request.method == "GET":
         return render_template("sell.html", user_stocks=user_stocks, length=length)
         
@@ -171,8 +209,8 @@ def sell():
         user_shares=db.execute("SELECT shares FROM stocks WHERE user_id = :user_id AND symbol = :symbol", user_id=session["user_id"], symbol=request.form.get("symbol"))[0]["shares"]
         if int(request.form.get("shares"),10) > user_shares:
             return apology("You don't own that many shares!")
-        total_cost = int(request.form.get("shares"),10)*lookup(request.form.get("symbol"))
-        db.execute("UPDATE users SET cash = :nettotal WHERE id = :user_id", user_id=session["user_id"], nettotal=user_cash-total_cost)
+        total_cost = int(request.form.get("shares"),10)*lookup(request.form.get("symbol"))["price"]
+        db.execute("UPDATE users SET cash = :nettotal WHERE id = :user_id", user_id=session["user_id"], nettotal=user_cash+total_cost)
         if user_shares == int(request.form.get("shares"),10):
             db.execute("DELETE FROM stocks WHERE user_id = :user_id AND symbol = :symbol", user_id=session["user_id"], symbol=request.form.get("symbol"))
                        
@@ -181,16 +219,7 @@ def sell():
                        
         return redirect("/")
 
-@app.route("/addcash", methods=["GET", "POST"])
-def addcash():
 
-    if request.method == "GET":
-        return render_template("addcash.html")
-    
-    
-    if request.method == "POST":
-        return apology("TODO")
-    
 def errorhandler(e):
     """Handle error"""
     if not isinstance(e, HTTPException):

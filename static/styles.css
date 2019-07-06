@@ -4,8 +4,17 @@
   font-weight: 500;
 }
 
+body{
+  background-color: #91bf93;
+}
+
 .price{
   color: green;
+}
+
+.leaderboard{
+  overflow: auto;
+  height: 90%; 
 }
 
 
